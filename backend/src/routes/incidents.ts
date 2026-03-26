@@ -1,0 +1,92 @@
+import { Router } from 'express';
+import prisma from '../prisma';
+import { haversineDistance } from '../utils/haversine';
+
+const router = Router();
+
+router.post('/', async (req, res) => {
+  const { title, type, latitude, longitude, notes } = req.body;
+  const createdById = req.user?.userId;
+
+  if (!createdById) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  if (!title || !type || typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return res.status(400).json({ message: 'Missing incident fields' });
+  }
+
+  const incident = await prisma.incident.create({
+    data: { title, type, latitude, longitude, notes, createdById },
+  });
+
+  // assignment logic: nearest available vehicle
+  const available = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } });
+  if (available.length > 0) {
+    let best = available[0];
+    let bestDistance = haversineDistance(latitude, longitude, best.currentLat ?? 0, best.currentLon ?? 0);
+
+    for (const vehicle of available.slice(1)) {
+      if (vehicle.currentLat === null || vehicle.currentLon === null) continue;
+      const distance = haversineDistance(latitude, longitude, vehicle.currentLat, vehicle.currentLon);
+      if (distance < bestDistance) {
+        best = vehicle;
+        bestDistance = distance;
+      }
+    }
+
+    if (best) {
+      await prisma.incident.update({
+        where: { id: incident.id },
+        data: { status: 'ASSIGNED', assignedUnitId: best.id },
+      });
+      await prisma.vehicle.update({
+        where: { id: best.id },
+        data: { status: 'BUSY' },
+      });
+      await prisma.dispatchAssignment.create({
+        data: {
+          incidentId: incident.id,
+          vehicleId: best.id,
+          status: 'PENDING',
+        },
+      });
+    }
+  }
+
+  return res.status(201).json(incident);
+});
+
+router.get('/', async (req, res) => {
+  const { status } = req.query;
+  const filter: any = {};
+  if (status) filter.status = status;
+
+  const incidents = await prisma.incident.findMany({ where: filter });
+  return res.json(incidents);
+});
+
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  const incident = await prisma.incident.findUnique({ where: { id } });
+  if (!incident) return res.status(404).json({ message: 'Incident not found' });
+  return res.json(incident);
+});
+
+router.put('/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const valid = ['OPEN', 'ASSIGNED', 'ENROUTE', 'ARRIVED', 'RESOLVED', 'CLOSED'];
+  if (!valid.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  const incident = await prisma.incident.update({
+    where: { id },
+    data: { status },
+  });
+
+  return res.json(incident);
+});
+
+export default router;

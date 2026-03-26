@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id           String      @id @default(uuid())
+  plateNumber  String      @unique
+  type         VehicleType
+  status       VehicleStatus @default(AVAILABLE)
+  currentLat   Float?
+  currentLon   Float?
+  lastSeenAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum VehicleType {
+  AMBULANCE
+  FIRE_TRUCK
+  POLICE_CAR
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+model DispatchAssignment {
+  id          String        @id @default(uuid())
+  incidentId  String
+  vehicleId   String
+  assignedAt  DateTime      @default(now())
+  status      AssignmentStatus @default(PENDING)
+}
+
+enum AssignmentStatus {
+  PENDING
+  ENROUTE
+  COMPLETED
+  CANCELLED
+}
