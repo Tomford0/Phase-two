@@ -1,0 +1,78 @@
+.container {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-color);
+  padding: 2rem;
+}
+
+.card {
+  background-color: var(--surface);
+  width: 100%;
+  max-width: 480px;
+  padding: 3.5rem 3rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.header {
+  margin-bottom: 2.5rem;
+  text-align: left;
+}
+
+.logo {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+  color: var(--text-color);
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-color);
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.switchText {
+  margin-top: 2rem;
+  text-align: left;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.switchLink {
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: opacity 0.15s ease;
+}
+
+.switchLink:hover {
+  opacity: 0.7;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(227, 0, 0, 0.05);
+  border: 1px solid rgba(227, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+}

@@ -1,15 +1,27 @@
-import Link from "next/link";
+import Link from 'next/link';
+import styles from './page.module.css';
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div>
-      <h1>Emergency Response System</h1>
-
-      <p><Link href="/login">Go to Login</Link></p>
-      <p><Link href="/dashboard">Go to Dashboard</Link></p>
-      <p><Link href="/report">Report Incident</Link></p>
-      <p><Link href="/tracking">Tracking</Link></p>
-      <p><Link href="/analytics">Analytics</Link></p>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <div className={styles.logo}>ERS.nano</div>
+        <nav className={styles.nav}>
+          <Link href="/auth" className="btn-outline">Sign In</Link>
+          <Link href="/auth?mode=register" className="btn-primary">Register</Link>
+        </nav>
+      </header>
+      
+      <main className={styles.hero}>
+        <h1 className={styles.title}>Rapid Response.<br/>Absolute Clarity.</h1>
+        <p className={styles.subtitle}>
+          A minimal, unified dashboard for dispatchers, hospitals, ambulances, and administrators to orchestrate emergency scenarios effortlessly.
+        </p>
+        <div className={styles.ctaGroup}>
+          <Link href="/auth?mode=register" className="btn-primary">Get Started</Link>
+          <Link href="/dashboard" className="btn-outline">View Dashboard</Link>
+        </div>
+      </main>
     </div>
   );
 }
