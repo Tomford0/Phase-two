@@ -1,10 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import authRouter from './routes/auth';
 
-dotenv.config();
 
 const app = express();
 

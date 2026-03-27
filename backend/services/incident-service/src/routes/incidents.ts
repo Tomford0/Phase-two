@@ -6,19 +6,19 @@ const router = Router();
 
 router.post('/', async (req, res) => {
   try {
-    const { title, type, latitude, longitude, notes } = req.body;
+    const { citizenName, title, type, latitude, longitude, notes } = req.body;
     const createdById = req.user?.userId;
 
     if (!createdById) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    if (!title || !type || typeof latitude !== 'number' || typeof longitude !== 'number') {
-      return res.status(400).json({ message: 'Missing incident fields' });
+    if (!citizenName || !title || !type || typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ message: 'Missing incident fields (citizenName, title, type, lat, lon)' });
     }
 
     const incident = await prisma.incident.create({
-      data: { title, type, latitude, longitude, notes, createdById, status: 'OPEN' },
+      data: { citizenName, title, type, latitude, longitude, notes, createdById, status: 'OPEN' },
     });
 
     // Publish event for dispatch service to pick up
@@ -46,6 +46,16 @@ router.get('/', async (req, res) => {
     return res.json(incidents);
   } catch (error) {
     console.error('Get incidents error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/open', async (req, res) => {
+  try {
+    const incidents = await prisma.incident.findMany({ where: { status: 'OPEN' } });
+    return res.json(incidents);
+  } catch (error) {
+    console.error('Get open incidents error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -85,6 +95,30 @@ router.put('/:id/status', async (req, res) => {
     return res.json(incident);
   } catch (error) {
     console.error('Update incident status error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.put('/:id/assign', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { assignedUnitId } = req.body;
+    
+    if (!assignedUnitId) {
+      return res.status(400).json({ message: 'assignedUnitId is required' });
+    }
+
+    const incident = await prisma.incident.update({
+      where: { id },
+      data: { 
+        assignedUnitId,
+        status: 'ASSIGNED'
+      },
+    });
+
+    return res.json(incident);
+  } catch (error) {
+    console.error('Assign incident error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });

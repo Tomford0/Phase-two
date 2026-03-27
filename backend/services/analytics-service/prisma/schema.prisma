@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model IncidentRecord {
+  id             String    @id @default(uuid())
+  incidentId     String    @unique
+  type           String
+  latitude       Float
+  longitude      Float
+  status         String    @default("OPEN")
+  createdAt      DateTime  @default(now())
+  assignedAt     DateTime?
+  responseTimeMs Int?
+}
+
+model ResourceUtilization {
+  id              String   @id @default(uuid())
+  vehicleId       String   @unique
+  vehicleType     String
+  totalDispatches Int      @default(0)
+  lastAssignedAt  DateTime @default(now())
+}

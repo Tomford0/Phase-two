@@ -1,0 +1,464 @@
+{
+  "info": {
+    "name": "Emergency Response Phase 2",
+    "description": "Updated Postman collection utilizing the API Gateway on port 3000 and the new Analytics Service endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth Service",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"System Admin\",\n    \"email\": \"admin@emergency.local\",\n    \"password\": \"secret123\",\n    \"role\": \"ADMIN\"\n}"
+            },
+            "url": "http://localhost:3000/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "let responseData = pm.response.json();",
+                  "if(responseData.token) {",
+                  "    pm.collectionVariables.set(\"token\", responseData.token);",
+                  "    console.log(\"Token automatically saved to Collection Variables!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@emergency.local\",\n    \"password\": \"secret123\"\n}"
+            },
+            "url": "http://localhost:3000/auth/login"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/auth/profile"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/auth/refresh-token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Incident Service",
+      "item": [
+        {
+          "name": "Create Incident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"citizenName\": \"John Doe\",\n    \"title\": \"Multi-vehicle crash\",\n    \"type\": \"ACCIDENT\",\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"notes\": \"Multiple lanes blocked\"\n}"
+            },
+            "url": "http://localhost:3000/incidents"
+          }
+        },
+        {
+          "name": "List All Incidents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/incidents"
+          }
+        },
+        {
+          "name": "List Open Incidents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/incidents/open"
+          }
+        },
+        {
+          "name": "Manual Assign Unit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"assignedUnitId\": \"UNIT_UUID_HERE\"\n}"
+            },
+            "url": "http://localhost:3000/incidents/INCIDENT_ID/assign"
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"RESOLVED\"\n}"
+            },
+            "url": "http://localhost:3000/incidents/INCIDENT_ID/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dispatch Service",
+      "item": [
+        {
+          "name": "Register Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"plateNumber\": \"AMB-123\",\n    \"type\": \"AMBULANCE\"\n}"
+            },
+            "url": "http://localhost:3000/vehicles"
+          }
+        },
+        {
+          "name": "List Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/vehicles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking Service",
+      "item": [
+        {
+          "name": "Submit Recent Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"latitude\": 40.7130,\n    \"longitude\": -74.0065,\n    \"stationId\": \"HOSPITAL_UUID\",\n    \"incidentId\": \"INCIDENT_UUID\",\n    \"vehicleStatus\": \"BUSY\"\n}"
+            },
+            "url": "http://localhost:3000/tracking/vehicles/VEHICLE_ID/location"
+          }
+        },
+        {
+          "name": "Get Current Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/tracking/vehicles/VEHICLE_ID/location"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hospital Service",
+      "item": [
+        {
+          "name": "Create Hospital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"General Hospital\",\n    \"address\": \"123 Healthcare Ave\",\n    \"bedTotal\": 500,\n    \"ambulanceCount\": 10\n}"
+            },
+            "url": "http://localhost:3000/hospitals"
+          }
+        },
+        {
+          "name": "List Hospitals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/hospitals"
+          }
+        },
+        {
+          "name": "Update Beds",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"bedAvailable\": 450\n}"
+            },
+            "url": "http://localhost:3000/hospitals/HOSPITAL_ID/beds"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics Service",
+      "item": [
+        {
+          "name": "Get Response Times",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/analytics/response-times"
+          }
+        },
+        {
+          "name": "Get Incidents By Region",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/analytics/incidents-by-region"
+          }
+        },
+        {
+          "name": "Get Resource Utilization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "http://localhost:3000/analytics/resource-utilization"
+          }
+        }
+      ]
+    }
+  ]
+}

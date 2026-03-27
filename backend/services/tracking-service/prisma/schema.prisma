@@ -8,9 +8,12 @@ datasource db {
 }
 
 model LocationUpdate {
-  id        String   @id @default(uuid())
-  vehicleId String
-  latitude  Float
-  longitude Float
-  timestamp DateTime @default(now())
+  id            String   @id @default(uuid())
+  vehicleId     String
+  stationId     String?
+  incidentId    String?
+  vehicleStatus String?
+  latitude      Float
+  longitude     Float
+  timestamp     DateTime @default(now())
 }

@@ -10,6 +10,13 @@ router.post('/vehicles', async (req, res) => {
       return res.status(400).json({ message: 'plateNumber and type required' });
     }
 
+    const existing = await prisma.vehicle.findUnique({
+      where: { plateNumber }
+    });
+    if (existing) {
+      return res.status(409).json({ message: 'Vehicle with that plate number already exists' });
+    }
+
     const vehicle = await prisma.vehicle.create({
       data: {
         plateNumber,

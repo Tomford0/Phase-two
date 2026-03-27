@@ -9,6 +9,7 @@ datasource db {
 
 model Incident {
   id            String           @id @default(uuid())
+  citizenName   String
   title         String
   type          IncidentType
   status        IncidentStatus   @default(OPEN)

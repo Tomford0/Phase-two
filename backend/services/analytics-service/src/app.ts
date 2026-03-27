@@ -2,9 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { authGuard } from './middleware/auth';
-import trackingRouter from './routes/tracking';
-
+import analyticsRouter from './routes/analytics';
 
 const app = express();
 
@@ -12,10 +10,11 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-app.use('/', authGuard, trackingRouter);
+// For gateway
+app.use('/', analyticsRouter);
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'Tracking service running' });
+  res.json({ status: 'Analytics service running' });
 });
 
 export default app;

@@ -7,7 +7,7 @@ const router = Router();
 router.post('/vehicles/:id/location', async (req, res) => {
   try {
     const { id } = req.params;
-    const { latitude, longitude, timestamp } = req.body;
+    const { latitude, longitude, timestamp, stationId, incidentId, vehicleStatus } = req.body;
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return res.status(400).json({ message: 'latitude and longitude must be numbers' });
@@ -16,6 +16,9 @@ router.post('/vehicles/:id/location', async (req, res) => {
     const loc = await prisma.locationUpdate.create({
       data: {
         vehicleId: id,
+        stationId,
+        incidentId,
+        vehicleStatus,
         latitude,
         longitude,
         timestamp: timestamp ? new Date(timestamp) : new Date(),
@@ -34,6 +37,9 @@ router.post('/vehicles/:id/location', async (req, res) => {
         Buffer.from(
           JSON.stringify({
             vehicleId: id,
+            stationId,
+            incidentId,
+            vehicleStatus,
             latitude,
             longitude,
             timestamp: loc.timestamp,
@@ -50,6 +56,21 @@ router.post('/vehicles/:id/location', async (req, res) => {
     return res.status(201).json(loc);
   } catch (error) {
     console.error('Update location error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/vehicles/:id/location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const location = await prisma.locationUpdate.findFirst({
+      where: { vehicleId: id },
+      orderBy: { timestamp: 'desc' },
+    });
+    if (!location) return res.status(404).json({ message: 'No location found' });
+    return res.json(location);
+  } catch (error) {
+    console.error('Get location error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
