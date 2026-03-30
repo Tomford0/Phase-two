@@ -22,9 +22,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navLinks = [
     { name: 'Overview', href: '/dashboard', roles: ['ADMIN', 'DISPATCHER', 'HOSPITAL', 'AMBULANCE', 'CITIZEN'] },
-    { name: 'Incidents Queue', href: '/dashboard/incidents', roles: ['ADMIN', 'DISPATCHER'] },
-    { name: 'Bed Management', href: '/dashboard/hospital', roles: ['ADMIN', 'HOSPITAL'] },
+    { name: 'Incidents', href: '/dashboard/incidents', roles: ['ADMIN', 'DISPATCHER'] },
+    { name: 'Vehicles', href: '/dashboard/vehicles', roles: ['ADMIN', 'DISPATCHER', 'AMBULANCE'] },
+    { name: 'Hospitals', href: '/dashboard/hospital', roles: ['ADMIN', 'HOSPITAL'] },
     { name: 'Live Tracking', href: '/dashboard/tracking', roles: ['ADMIN', 'AMBULANCE'] },
+    { name: 'Analytics', href: '/dashboard/analytics', roles: ['ADMIN'] },
   ];
 
   return (
@@ -50,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
       <main className={styles.mainContent}>
         <header className={styles.header}>
-          <h1>Dashboard Overview</h1>
+          <h1>Dashboard</h1>
         </header>
         <div className={styles.contentArea}>
           {children}

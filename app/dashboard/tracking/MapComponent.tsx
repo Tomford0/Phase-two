@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +21,34 @@ interface VehicleLocation {
   status: string;
 }
 
+function RecenterButton({ position }: { position: [number, number] }) {
+  const map = useMap();
+  return (
+    <button 
+      onClick={(e) => {
+        e.preventDefault();
+        map.setView(position, 13);
+      }}
+      style={{
+        position: 'absolute',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 1000,
+        backgroundColor: 'var(--primary)',
+        color: 'var(--primary-text)',
+        border: '1px solid var(--border)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: 'var(--radius-lg)',
+        cursor: 'pointer',
+        fontWeight: 600,
+        fontSize: '0.9rem'
+      }}
+    >
+      Recenter View
+    </button>
+  );
+}
+
 export default function MapComponent() {
   const { user } = useAuth();
   const [markers, setMarkers] = useState<VehicleLocation[]>([]);
@@ -38,7 +66,7 @@ export default function MapComponent() {
         const token = localStorage.getItem('token');
         if (!token) throw new Error('No authentication token found');
 
-        // 1. Fetch all registered vehicles from Dispatch Service via API Gateway
+        // 1. Fetch all registered vehicles from Dispatch Service
         const vehiclesReq = await fetch('http://localhost:3000/vehicles', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -50,9 +78,8 @@ export default function MapComponent() {
         const vehicles = await vehiclesReq.json();
         const activeUnits: VehicleLocation[] = [];
 
-        // 2. Fetch specific GPS locations for each vehicle from Tracking Service via API Gateway
+        // 2. Fetch specific GPS locations for each vehicle
         for (const vehicle of vehicles) {
-          // Wrap in try-catch so one failing vehicle doesn't break the whole loop
           try {
             const locReq = await fetch(`http://localhost:3000/tracking/vehicles/${vehicle.id}/location`, {
               headers: { 'Authorization': `Bearer ${token}` }
@@ -60,7 +87,6 @@ export default function MapComponent() {
 
             if (locReq.ok) {
               const locData = await locReq.json();
-              // Support various standard coordinate structures
               const lat = locData.latitude || locData.lat || (locData.coordinates && locData.coordinates[0]);
               const lng = locData.longitude || locData.lng || (locData.coordinates && locData.coordinates[1]);
 
@@ -88,7 +114,7 @@ export default function MapComponent() {
 
     fetchCoordinates();
     
-    // Auto-refresh GPS points every 10 seconds for Live Tracking effect!
+    // Auto-refresh GPS points every 10 seconds
     const interval = setInterval(fetchCoordinates, 10000);
     return () => {
       isMounted = false;
@@ -111,6 +137,7 @@ export default function MapComponent() {
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
+        <RecenterButton position={centerPosition} />
         
         {loading && markers.length === 0 && (
           <Marker position={defaultPosition}>
