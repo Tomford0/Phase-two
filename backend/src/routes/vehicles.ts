@@ -5,14 +5,17 @@ import { roles } from '../middleware/roles';
 const router = Router();
 
 router.post('/register', roles('ADMIN'), async (req, res) => {
-  const { plateNumber, type, hospitalId } = req.body;
-  if (!plateNumber || !type) return res.status(400).json({ message: 'plateNumber and type required' });
+  const { plateNumber, type, hospitalId, currentLat, currentLon } = req.body;
+  if (!plateNumber || !type || typeof currentLat !== 'number' || typeof currentLon !== 'number')
+    return res.status(400).json({ message: 'plateNumber, type, currentLat, and currentLon are required' });
 
   const vehicle = await prisma.vehicle.create({
     data: {
       plateNumber,
       type,
       hospitalId,
+      currentLat,
+      currentLon,
       status: 'AVAILABLE',
     },
   });

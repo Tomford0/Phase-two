@@ -1,12 +1,13 @@
 import app from './app';
 import prisma from './prisma';
-import { connectQueue } from './queue';
+import { connectQueue, subscribeToDispatchAssigned } from './queue';
 
 const PORT = Number(process.env.PORT || 3002);
 
 const start = async () => {
   try {
     await connectQueue();
+    await subscribeToDispatchAssigned();
     await prisma.$connect();
     
     const server = app.listen(PORT, () => {

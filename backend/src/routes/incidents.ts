@@ -25,10 +25,9 @@ router.post('/', roles('ADMIN', 'DISPATCHER', 'CITIZEN', 'HOSPITAL', 'AMBULANCE'
   const available = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } });
   if (available.length > 0) {
     let best = available[0];
-    let bestDistance = haversineDistance(latitude, longitude, best.currentLat ?? 0, best.currentLon ?? 0);
+    let bestDistance = haversineDistance(latitude, longitude, best.currentLat, best.currentLon);
 
     for (const vehicle of available.slice(1)) {
-      if (vehicle.currentLat === null || vehicle.currentLon === null) continue;
       const distance = haversineDistance(latitude, longitude, vehicle.currentLat, vehicle.currentLon);
       if (distance < bestDistance) {
         best = vehicle;

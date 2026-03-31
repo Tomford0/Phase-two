@@ -6,28 +6,83 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useAuth } from '@/context/AuthContext';
 
-// Fix for default marker icons in Next.js/Leaflet context
 delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
+
+type VehicleType = 'AMBULANCE' | 'FIRE_TRUCK' | 'POLICE_CAR';
 
 interface VehicleLocation {
   id: string;
   name: string;
   position: [number, number];
   status: string;
+  type: VehicleType | string;
 }
 
-function RecenterButton({ position }: { position: [number, number] }) {
+const VEHICLE_CONFIG: Record<string, { color: string; bg: string; label: string; symbol: string }> = {
+  AMBULANCE:  { color: '#fff', bg: '#e53935', label: 'Ambulance',  symbol: '🚑' },
+  FIRE_TRUCK: { color: '#fff', bg: '#e65100', label: 'Fire Truck', symbol: '🚒' },
+  POLICE_CAR: { color: '#fff', bg: '#1565c0', label: 'Police',     symbol: '🚓' },
+  DEFAULT:    { color: '#fff', bg: '#37474f', label: 'Vehicle',    symbol: '🚗' },
+};
+
+function isValidCoord(lat: number, lng: number) {
+  return (
+    isFinite(lat) && isFinite(lng) &&
+    lat >= -90 && lat <= 90 &&
+    lng >= -180 && lng <= 180
+  );
+}
+
+function createVehicleIcon(type: string, status: string) {
+  const cfg = VEHICLE_CONFIG[type] ?? VEHICLE_CONFIG.DEFAULT;
+  const opacity = status === 'OFFLINE' ? '0.5' : '1';
+  const html = `
+    <div style="
+      background:${cfg.bg};
+      opacity:${opacity};
+      color:${cfg.color};
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      width:36px;height:36px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.4);
+      border:2px solid rgba(255,255,255,0.8);
+    ">
+      <span style="transform:rotate(45deg);font-size:16px;line-height:1;">${cfg.symbol}</span>
+    </div>
+  `;
+  return L.divIcon({ html, className: '', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -38] });
+}
+
+/** Automatically pans/zooms the map to fit all vehicle markers whenever they change. */
+function FitToBounds({ markers }: { markers: VehicleLocation[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (markers.length === 0) return;
+    if (markers.length === 1) {
+      map.setView(markers[0].position, 14);
+    } else {
+      const bounds = L.latLngBounds(markers.map(m => m.position));
+      map.fitBounds(bounds, { padding: [60, 60] });
+    }
+  }, [markers, map]);
+  return null;
+}
+
+/** Recenter button — flies back to fit all vehicles in view. */
+function RecenterButton({ markers, defaultPosition }: { markers: VehicleLocation[]; defaultPosition: [number, number] }) {
   const map = useMap();
   return (
-    <button 
+    <button
       onClick={(e) => {
         e.preventDefault();
-        map.setView(position, 13);
+        if (markers.length === 1) {
+          map.setView(markers[0].position, 14);
+        } else if (markers.length > 1) {
+          map.fitBounds(L.latLngBounds(markers.map(m => m.position)), { padding: [60, 60] });
+        } else {
+          map.setView(defaultPosition, 13);
+        }
       }}
       style={{
         position: 'absolute',
@@ -54,9 +109,10 @@ export default function MapComponent() {
   const [markers, setMarkers] = useState<VehicleLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [invalidCount, setInvalidCount] = useState(0);
 
-  // Default coordinate (New York) to center map if no data exists
-  const defaultPosition: [number, number] = [40.7128, -74.0060];
+  // Accra, Ghana — used only as initial map center
+  const defaultPosition: [number, number] = [5.6037, -0.1870];
 
   useEffect(() => {
     let isMounted = true;
@@ -66,100 +122,158 @@ export default function MapComponent() {
         const token = localStorage.getItem('token');
         if (!token) throw new Error('No authentication token found');
 
-        // 1. Fetch all registered vehicles from Dispatch Service
         const vehiclesReq = await fetch('/api/vehicles', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (!vehiclesReq.ok) {
           throw new Error('Failed to fetch vehicles from backend');
         }
-        
+
         const vehicles = await vehiclesReq.json();
         const activeUnits: VehicleLocation[] = [];
+        let badCoords = 0;
 
-        // 2. Fetch specific GPS locations for each vehicle
         for (const vehicle of vehicles) {
+          // Primary: latest tracking-service GPS ping
+          let lat: number | undefined;
+          let lng: number | undefined;
+
           try {
             const locReq = await fetch(`/api/tracking/vehicles/${vehicle.id}/location`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (locReq.ok) {
               const locData = await locReq.json();
-              const lat = locData.latitude || locData.lat || (locData.coordinates && locData.coordinates[0]);
-              const lng = locData.longitude || locData.lng || (locData.coordinates && locData.coordinates[1]);
-
-              if (lat !== undefined && lng !== undefined) {
-                activeUnits.push({
-                  id: vehicle.id,
-                  name: vehicle.plateNumber || vehicle.name || `Unit ${vehicle.id}`,
-                  position: [parseFloat(lat), parseFloat(lng)],
-                  status: vehicle.status || 'ACTIVE'
-                });
-              }
+              lat = locData.latitude ?? locData.lat;
+              lng = locData.longitude ?? locData.lng;
             }
-          } catch (e) {
-            console.warn(`Could not fetch location for vehicle ${vehicle.id}`, e);
+          } catch {
+            // tracking service unavailable — fall through to vehicle record
           }
+
+          // Fallback: coordinates stored on the vehicle record itself
+          if (lat === undefined || lng === undefined) {
+            lat = vehicle.currentLat;
+            lng = vehicle.currentLon;
+          }
+
+          const latN = Number(lat);
+          const lngN = Number(lng);
+
+          if (!isValidCoord(latN, lngN)) {
+            badCoords++;
+            console.warn(`Vehicle ${vehicle.plateNumber} has invalid coordinates: lat=${lat}, lon=${lng}`);
+            continue;
+          }
+
+          activeUnits.push({
+            id: vehicle.id,
+            name: vehicle.plateNumber || `Unit ${vehicle.id}`,
+            position: [latN, lngN],
+            status: vehicle.status || 'AVAILABLE',
+            type: vehicle.type || 'DEFAULT'
+          });
         }
 
-        if (isMounted) setMarkers(activeUnits);
+        if (isMounted) {
+          setMarkers(activeUnits);
+          setInvalidCount(badCoords);
+        }
       } catch (err: any) {
-        if (isMounted) setErrorMsg(err.message || 'Error communicating with Tracking Servce.');
+        if (isMounted) setErrorMsg(err.message || 'Error communicating with backend.');
       } finally {
         if (isMounted) setLoading(false);
       }
     }
 
     fetchCoordinates();
-    
-    // Auto-refresh GPS points every 10 seconds
     const interval = setInterval(fetchCoordinates, 10000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
+    return () => { isMounted = false; clearInterval(interval); };
   }, []);
-
-  const centerPosition = markers.length > 0 ? markers[0].position : defaultPosition;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {errorMsg && markers.length === 0 && (
-         <div style={{ position: 'absolute', zIndex: 1000, top: 10, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-color)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
-           {errorMsg}
-         </div>
+
+      {/* Error banner */}
+      {errorMsg && (
+        <div style={{ position: 'absolute', zIndex: 1000, top: 10, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-color)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
+          {errorMsg}
+        </div>
       )}
-      
-      <MapContainer center={centerPosition} zoom={13} style={{ height: '100%', width: '100%' }}>
+
+      {/* Loading state */}
+      {loading && (
+        <div style={{ position: 'absolute', zIndex: 1000, bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.92)', border: '1px solid #ccc', color: '#555', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+          Connecting to live GPS feed…
+        </div>
+      )}
+
+      {/* Invalid coordinate warning */}
+      {!loading && invalidCount > 0 && (
+        <div style={{ position: 'absolute', zIndex: 1000, top: 10, left: '50%', transform: 'translateX(-50%)', background: '#fff3cd', border: '1px solid #ffc107', color: '#856404', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          ⚠ {invalidCount} vehicle{invalidCount > 1 ? 's have' : ' has'} invalid GPS coordinates — go to Vehicle Management to fix them.
+        </div>
+      )}
+
+      {/* No valid vehicles */}
+      {!loading && markers.length === 0 && !errorMsg && invalidCount === 0 && (
+        <div style={{ position: 'absolute', zIndex: 1000, bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.92)', border: '1px solid #ccc', color: '#555', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+          No active vehicles with GPS signals found.
+        </div>
+      )}
+
+      {/* Legend */}
+      <div style={{
+        position: 'absolute', top: 10, right: 10, zIndex: 1000,
+        background: 'rgba(255,255,255,0.95)', border: '1px solid #ddd',
+        borderRadius: '8px', padding: '10px 14px', fontSize: '0.8rem', lineHeight: '1.8'
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 6, color: '#333' }}>Vehicle Types</div>
+        {Object.entries(VEHICLE_CONFIG).filter(([k]) => k !== 'DEFAULT').map(([, cfg]) => (
+          <div key={cfg.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ display: 'inline-block', width: 14, height: 14, background: cfg.bg, borderRadius: '50%', flexShrink: 0 }} />
+            <span style={{ color: '#333' }}>{cfg.symbol} {cfg.label}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, borderTop: '1px solid #eee', paddingTop: 6 }}>
+          <span style={{ display: 'inline-block', width: 14, height: 14, background: VEHICLE_CONFIG.DEFAULT.bg, borderRadius: '50%', flexShrink: 0, opacity: 0.5 }} />
+          <span style={{ color: '#888', fontStyle: 'italic' }}>Offline / faded</span>
+        </div>
+      </div>
+
+      <MapContainer center={defaultPosition} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
-        <RecenterButton position={centerPosition} />
-        
-        {loading && markers.length === 0 && (
-          <Marker position={defaultPosition}>
-            <Popup>Connecting to API Gateway (:3000) for live signals...</Popup>
-          </Marker>
-        )}
 
-        {!loading && markers.length === 0 && (
-           <Marker position={defaultPosition}>
-             <Popup>No active GPS signals found in database. Showing origin point.</Popup>
-           </Marker>
-        )}
-        
-        {markers.map(unit => (
-          <Marker key={unit.id} position={unit.position}>
-            <Popup>
-              <strong>{unit.name}</strong><br/>
-              Status: {unit.status}<br/>
-              <em>Live GPS Signal</em>
-            </Popup>
-          </Marker>
-        ))}
+        {/* Auto-pan to vehicles whenever markers load/update */}
+        <FitToBounds markers={markers} />
+
+        {/* Recenter button — fits all vehicles in view */}
+        <RecenterButton markers={markers} defaultPosition={defaultPosition} />
+
+        {markers.map(unit => {
+          const cfg = VEHICLE_CONFIG[unit.type] ?? VEHICLE_CONFIG.DEFAULT;
+          return (
+            <Marker key={unit.id} position={unit.position} icon={createVehicleIcon(unit.type, unit.status)}>
+              <Popup>
+                <div style={{ minWidth: 140 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 20 }}>{cfg.symbol}</span>
+                    <strong style={{ color: cfg.bg }}>{cfg.label}</strong>
+                  </div>
+                  <div><strong>Unit:</strong> {unit.name}</div>
+                  <div><strong>Status:</strong> {unit.status}</div>
+                  <div><strong>Lat:</strong> {unit.position[0].toFixed(5)}</div>
+                  <div><strong>Lng:</strong> {unit.position[1].toFixed(5)}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 4 }}>Live GPS Signal</div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

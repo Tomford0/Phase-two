@@ -62,8 +62,8 @@ model Vehicle {
   plateNumber  String      @unique
   type         VehicleType
   status       VehicleStatus @default(AVAILABLE)
-  currentLat   Float?
-  currentLon   Float?
+  currentLat   Float
+  currentLon   Float
   lastSeenAt   DateTime?
   hospital     Hospital?   @relation(fields: [hospitalId], references: [id])
   hospitalId   String?

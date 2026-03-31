@@ -27,12 +27,11 @@ export const subscribeToIncidents = async (channel: amqp.Channel) => {
         let minDistance = haversineDistance(
           latitude,
           longitude,
-          nearest.currentLat ?? 0,
-          nearest.currentLon ?? 0
+          nearest.currentLat,
+          nearest.currentLon
         );
 
         for (const vehicle of vehicles.slice(1)) {
-          if (!vehicle.currentLat || !vehicle.currentLon) continue;
           const distance = haversineDistance(latitude, longitude, vehicle.currentLat, vehicle.currentLon);
           if (distance < minDistance) {
             nearest = vehicle;

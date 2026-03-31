@@ -17,7 +17,22 @@ interface Incident {
   assignedUnitId?: string;
 }
 
+interface Vehicle {
+  id: string;
+  plateNumber: string;
+  type: string;
+  status: string;
+}
+
 const VALID_STATUSES = ['OPEN', 'ASSIGNED', 'ENROUTE', 'ARRIVED', 'RESOLVED', 'CLOSED'];
+
+const INCIDENT_TO_VEHICLE_TYPE: Record<string, string[]> = {
+  MEDICAL:  ['AMBULANCE'],
+  FIRE:     ['FIRE_TRUCK'],
+  CRIME:    ['POLICE_CAR'],
+  TRAFFIC:  ['AMBULANCE'],
+  OTHER:    ['AMBULANCE', 'FIRE_TRUCK', 'POLICE_CAR'],
+};
 
 export default function IncidentsQueue() {
   const { user } = useAuth();
@@ -43,6 +58,10 @@ export default function IncidentsQueue() {
   const [formStatus, setFormStatus] = useState('OPEN');
   const [formUnitId, setFormUnitId] = useState('');
 
+  // Available vehicles for manual assign dropdown
+  const [assignableVehicles, setAssignableVehicles] = useState<Vehicle[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+
   useEffect(() => { fetchIncidents(); }, [user]);
 
   async function fetchIncidents() {
@@ -55,6 +74,28 @@ export default function IncidentsQueue() {
       setIncidents(await res.json());
     } catch (err: any) { setErrorMsg(err.message); }
     finally { setLoading(false); }
+  }
+
+  async function openAssignModal(incident: Incident) {
+    setSelectedIncident(incident);
+    setFormUnitId('');
+    setAssignableVehicles([]);
+    setShowAssignModal(true);
+    setLoadingVehicles(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/vehicles/available', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to fetch vehicles');
+      const all: Vehicle[] = await res.json();
+      const allowed = INCIDENT_TO_VEHICLE_TYPE[incident.type] ?? ['AMBULANCE', 'FIRE_TRUCK', 'POLICE_CAR'];
+      const filtered = all.filter(v => allowed.includes(v.type));
+      setAssignableVehicles(filtered);
+      if (filtered.length > 0) setFormUnitId(filtered[0].id);
+    } catch {
+      setAssignableVehicles([]);
+    } finally {
+      setLoadingVehicles(false);
+    }
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -116,9 +157,9 @@ export default function IncidentsQueue() {
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading...</p> : (
         <div className={styles.tableContainer}>
           <table className={styles.table}>
-            <thead><tr><th>ID</th><th>Title</th><th>Citizen</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Title</th><th>Citizen</th><th>Type</th><th>Status</th><th>Assigned Unit</th><th>Actions</th></tr></thead>
             <tbody>
-              {incidents.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No incidents found.</td></tr>}
+              {incidents.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No incidents found.</td></tr>}
               {incidents.map(inc => (
                 <tr key={inc.id}>
                   <td className={styles.mono}>{inc.id.slice(0, 8)}</td>
@@ -126,13 +167,18 @@ export default function IncidentsQueue() {
                   <td>{inc.citizenName}</td>
                   <td><span className={styles.badge}>{inc.type}</span></td>
                   <td><span className={`${styles.status} ${inc.status === 'OPEN' ? styles.statusOpen : styles.statusProgress}`}>{inc.status}</span></td>
+                  <td className={styles.mono} style={{ fontSize: '0.78rem', color: inc.assignedUnitId ? 'var(--text-color)' : 'var(--text-muted)' }}>
+                    {inc.assignedUnitId ? inc.assignedUnitId.slice(0, 8) : <em>none — awaiting auto-dispatch</em>}
+                  </td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
                     {['ADMIN', 'DISPATCHER'].includes(user?.role ?? '') && (
                       <>
                         <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
                           onClick={() => { setSelectedIncident(inc); setFormStatus(inc.status); setShowStatusModal(true); }}>Status</button>
-                        <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                          onClick={() => { setSelectedIncident(inc); setFormUnitId(inc.assignedUnitId || ''); setShowAssignModal(true); }}>Assign</button>
+                        {inc.status === 'OPEN' && (
+                          <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderColor: 'var(--warning, #f59e0b)', color: 'var(--warning, #f59e0b)' }}
+                            onClick={() => openAssignModal(inc)}>Manual Assign</button>
+                        )}
                       </>
                     )}
                   </td>
@@ -175,13 +221,30 @@ export default function IncidentsQueue() {
         </form>
       </Modal>
 
-      {/* Assign Unit Modal */}
-      <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Unit">
+      {/* Assign Unit Modal - Manual Override */}
+      <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Manual Assign Vehicle">
         <form onSubmit={handleAssignUnit}>
-          <label className="form-label">Incident: {selectedIncident?.title}</label>
-          <label className="form-label">Unit ID</label>
-          <input className="input-field" required value={formUnitId} onChange={e => setFormUnitId(e.target.value)} placeholder="Enter vehicle/unit ID" />
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>Assign</button>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+            Auto-dispatch found no available vehicles for <strong>{selectedIncident?.title}</strong>. Select a vehicle to assign manually.
+          </p>
+          <label className="form-label">Available {INCIDENT_TO_VEHICLE_TYPE[selectedIncident?.type ?? 'OTHER']?.join(' / ')} units</label>
+          {loadingVehicles ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading vehicles...</p>
+          ) : assignableVehicles.length === 0 ? (
+            <p style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>No available vehicles of the required type. Mark a vehicle as AVAILABLE first.</p>
+          ) : (
+            <select className="input-field" value={formUnitId} onChange={e => setFormUnitId(e.target.value)} required>
+              {assignableVehicles.map(v => (
+                <option key={v.id} value={v.id}>{v.plateNumber} — {v.type}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ width: '100%', marginTop: '0.5rem' }}
+            disabled={assignableVehicles.length === 0 || loadingVehicles}
+          >Assign</button>
         </form>
       </Modal>
     </div>
