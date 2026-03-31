@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/vehicles/:id/location', async (req, res) => {
+router.post('/vehicles/:id/location', roles('ADMIN', 'AMBULANCE'), async (req, res) => {
   const { id } = req.params;
   const { latitude, longitude, timestamp } = req.body;
 

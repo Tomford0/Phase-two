@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import amqp from 'amqplib';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/vehicles/:id/location', async (req, res) => {
+router.post('/vehicles/:id/location', roles('ADMIN', 'AMBULANCE'), async (req, res) => {
   try {
     const { id } = req.params;
     const { latitude, longitude, timestamp, stationId, incidentId, vehicleStatus } = req.body;
@@ -60,7 +61,7 @@ router.post('/vehicles/:id/location', async (req, res) => {
   }
 });
 
-router.get('/vehicles/:id/location', async (req, res) => {
+router.get('/vehicles/:id/location', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   try {
     const { id } = req.params;
     const location = await prisma.locationUpdate.findFirst({
@@ -75,7 +76,7 @@ router.get('/vehicles/:id/location', async (req, res) => {
   }
 });
 
-router.get('/vehicles/:id/locations', async (req, res) => {
+router.get('/vehicles/:id/locations', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   try {
     const { id } = req.params;
     const locations = await prisma.locationUpdate.findMany({

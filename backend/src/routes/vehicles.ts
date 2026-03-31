@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/register', async (req, res) => {
+router.post('/register', roles('ADMIN'), async (req, res) => {
   const { plateNumber, type, hospitalId } = req.body;
   if (!plateNumber || !type) return res.status(400).json({ message: 'plateNumber and type required' });
 
@@ -19,17 +20,17 @@ router.post('/register', async (req, res) => {
   return res.status(201).json(vehicle);
 });
 
-router.get('/', async (req, res) => {
+router.get('/', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   const vehicles = await prisma.vehicle.findMany();
   return res.json(vehicles);
 });
 
-router.get('/available', async (req, res) => {
+router.get('/available', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   const vehicles = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } });
   return res.json(vehicles);
 });
 
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const valid = ['AVAILABLE', 'BUSY', 'OFFLINE'];

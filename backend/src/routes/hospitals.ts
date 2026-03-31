@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.get('/', async (req, res) => {
+router.get('/', roles('ADMIN', 'DISPATCHER', 'HOSPITAL'), async (req, res) => {
   const hospitals = await prisma.hospital.findMany();
   return res.json(hospitals);
 });
 
-router.put('/:id/beds', async (req, res) => {
+router.put('/:id/beds', roles('ADMIN', 'HOSPITAL'), async (req, res) => {
   const { id } = req.params;
   const { bedAvailable } = req.body;
 

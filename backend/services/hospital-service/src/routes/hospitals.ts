@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.get('/', async (req, res) => {
+router.get('/', roles('ADMIN', 'DISPATCHER', 'HOSPITAL'), async (req, res) => {
   try {
     const hospitals = await prisma.hospital.findMany();
     return res.json(hospitals);
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', roles('ADMIN', 'HOSPITAL'), async (req, res) => {
   try {
     const { name, address, bedTotal, ambulanceCount } = req.body;
 
@@ -38,7 +39,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id/beds', async (req, res) => {
+router.put('/:id/beds', roles('ADMIN', 'HOSPITAL'), async (req, res) => {
   try {
     const { id } = req.params;
     const { bedAvailable } = req.body;
@@ -59,7 +60,7 @@ router.put('/:id/beds', async (req, res) => {
   }
 });
 
-router.put('/:id/ambulances', async (req, res) => {
+router.put('/:id/ambulances', roles('ADMIN', 'HOSPITAL'), async (req, res) => {
   try {
     const { id } = req.params;
     const { ambulanceCount } = req.body;

@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/vehicles', async (req, res) => {
+router.post('/vehicles', roles('ADMIN'), async (req, res) => {
   try {
     const { plateNumber, type } = req.body;
     if (!plateNumber || !type) {
@@ -32,7 +33,7 @@ router.post('/vehicles', async (req, res) => {
   }
 });
 
-router.get('/vehicles', async (req, res) => {
+router.get('/vehicles', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany();
     return res.json(vehicles);
@@ -42,7 +43,7 @@ router.get('/vehicles', async (req, res) => {
   }
 });
 
-router.get('/vehicles/available', async (req, res) => {
+router.get('/vehicles/available', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } });
     return res.json(vehicles);
@@ -52,7 +53,7 @@ router.get('/vehicles/available', async (req, res) => {
   }
 });
 
-router.put('/vehicles/:id/status', async (req, res) => {
+router.put('/vehicles/:id/status', roles('ADMIN', 'DISPATCHER', 'AMBULANCE'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

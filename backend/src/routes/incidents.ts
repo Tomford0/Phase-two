@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { haversineDistance } from '../utils/haversine';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/', async (req, res) => {
+router.post('/', roles('ADMIN', 'DISPATCHER', 'CITIZEN', 'HOSPITAL', 'AMBULANCE'), async (req, res) => {
   const { title, type, latitude, longitude, notes } = req.body;
   const createdById = req.user?.userId;
 
@@ -57,23 +58,28 @@ router.post('/', async (req, res) => {
   return res.status(201).json(incident);
 });
 
-router.get('/', async (req, res) => {
+router.get('/', roles('ADMIN', 'DISPATCHER', 'CITIZEN'), async (req, res) => {
   const { status } = req.query;
   const filter: any = {};
   if (status) filter.status = status;
+
+  // Citizens can only see their own incidents
+  if (req.user?.role === 'CITIZEN') {
+    filter.createdById = req.user.userId;
+  }
 
   const incidents = await prisma.incident.findMany({ where: filter });
   return res.json(incidents);
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   const { id } = req.params;
   const incident = await prisma.incident.findUnique({ where: { id } });
   if (!incident) return res.status(404).json({ message: 'Incident not found' });
   return res.json(incident);
 });
 
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const valid = ['OPEN', 'ASSIGNED', 'ENROUTE', 'ARRIVED', 'RESOLVED', 'CLOSED'];

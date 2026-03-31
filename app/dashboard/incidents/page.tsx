@@ -127,10 +127,14 @@ export default function IncidentsQueue() {
                   <td><span className={styles.badge}>{inc.type}</span></td>
                   <td><span className={`${styles.status} ${inc.status === 'OPEN' ? styles.statusOpen : styles.statusProgress}`}>{inc.status}</span></td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                      onClick={() => { setSelectedIncident(inc); setFormStatus(inc.status); setShowStatusModal(true); }}>Status</button>
-                    <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                      onClick={() => { setSelectedIncident(inc); setFormUnitId(inc.assignedUnitId || ''); setShowAssignModal(true); }}>Assign</button>
+                    {['ADMIN', 'DISPATCHER'].includes(user?.role ?? '') && (
+                      <>
+                        <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                          onClick={() => { setSelectedIncident(inc); setFormStatus(inc.status); setShowStatusModal(true); }}>Status</button>
+                        <button className="btn-outline" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                          onClick={() => { setSelectedIncident(inc); setFormUnitId(inc.assignedUnitId || ''); setShowAssignModal(true); }}>Assign</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

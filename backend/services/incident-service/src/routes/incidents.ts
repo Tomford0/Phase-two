@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { publishEvent } from '../queue';
+import { roles } from '../middleware/roles';
 
 const router = Router();
 
-router.post('/', async (req, res) => {
+router.post('/', roles('ADMIN', 'DISPATCHER', 'CITIZEN', 'HOSPITAL', 'AMBULANCE'), async (req, res) => {
   try {
     const { citizenName, title, type, latitude, longitude, notes } = req.body;
     const createdById = req.user?.userId;
@@ -36,11 +37,16 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.get('/', async (req, res) => {
+router.get('/', roles('ADMIN', 'DISPATCHER', 'CITIZEN'), async (req, res) => {
   try {
     const { status } = req.query;
     const filter: any = {};
     if (status) filter.status = status;
+
+    // Citizens can only see their own incidents
+    if (req.user?.role === 'CITIZEN') {
+      filter.createdById = req.user.userId;
+    }
 
     const incidents = await prisma.incident.findMany({ where: filter });
     return res.json(incidents);
@@ -50,7 +56,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/open', async (req, res) => {
+router.get('/open', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   try {
     const incidents = await prisma.incident.findMany({ where: { status: 'OPEN' } });
     return res.json(incidents);
@@ -60,7 +66,7 @@ router.get('/open', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   try {
     const { id } = req.params;
     const incident = await prisma.incident.findUnique({ where: { id } });
@@ -72,7 +78,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -99,7 +105,7 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
-router.put('/:id/assign', async (req, res) => {
+router.put('/:id/assign', roles('ADMIN', 'DISPATCHER'), async (req, res) => {
   try {
     const { id } = req.params;
     const { assignedUnitId } = req.body;

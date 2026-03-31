@@ -15,6 +15,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Name, email, password, and role are required.' });
     }
 
+    const validRoles = ['ADMIN', 'DISPATCHER', 'AMBULANCE', 'HOSPITAL', 'CITIZEN'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be one of: ADMIN, DISPATCHER, AMBULANCE, HOSPITAL, CITIZEN' });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return res.status(409).json({ message: 'Email already exists' });
