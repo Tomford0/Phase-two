@@ -10,7 +10,8 @@ datasource db {
 model Hospital {
   id             String   @id @default(uuid())
   name           String
-  address        String
+  latitude       Float
+  longitude      Float
   bedTotal       Int
   bedAvailable   Int
   ambulanceCount Int

@@ -16,16 +16,24 @@ router.get('/', roles('ADMIN', 'DISPATCHER', 'HOSPITAL'), async (req, res) => {
 
 router.post('/', roles('ADMIN', 'HOSPITAL'), async (req, res) => {
   try {
-    const { name, address, bedTotal, ambulanceCount } = req.body;
+    const { name, latitude, longitude, bedTotal, ambulanceCount } = req.body;
 
-    if (!name || !address || typeof bedTotal !== 'number') {
-      return res.status(400).json({ message: 'name, address, and bedTotal are required' });
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (!name || typeof bedTotal !== 'number' || isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ message: 'name, latitude, longitude, and bedTotal are required' });
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ message: 'Invalid coordinates' });
     }
 
     const hospital = await prisma.hospital.create({
       data: {
         name,
-        address,
+        latitude: lat,
+        longitude: lng,
         bedTotal,
         bedAvailable: bedTotal,
         ambulanceCount: ambulanceCount || 0,

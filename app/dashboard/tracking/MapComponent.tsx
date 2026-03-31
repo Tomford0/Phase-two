@@ -18,6 +18,14 @@ interface VehicleLocation {
   type: VehicleType | string;
 }
 
+interface HospitalLocation {
+  id: string;
+  name: string;
+  position: [number, number];
+  bedAvailable: number;
+  ambulanceCount: number;
+}
+
 const VEHICLE_CONFIG: Record<string, { color: string; bg: string; label: string; symbol: string }> = {
   AMBULANCE:  { color: '#fff', bg: '#e53935', label: 'Ambulance',  symbol: '🚑' },
   FIRE_TRUCK: { color: '#fff', bg: '#e65100', label: 'Fire Truck', symbol: '🚒' },
@@ -50,6 +58,22 @@ function createVehicleIcon(type: string, status: string) {
     ">
       <span style="transform:rotate(45deg);font-size:16px;line-height:1;">${cfg.symbol}</span>
     </div>
+  `;
+  return L.divIcon({ html, className: '', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -38] });
+}
+
+function createHospitalIcon() {
+  const html = `
+    <div style="
+      background:#00897b;
+      color:#fff;
+      border-radius:8px;
+      width:36px;height:36px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.4);
+      border:2px solid rgba(255,255,255,0.8);
+      font-size:18px;
+    ">🏥</div>
   `;
   return L.divIcon({ html, className: '', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -38] });
 }
@@ -107,6 +131,7 @@ function RecenterButton({ markers, defaultPosition }: { markers: VehicleLocation
 export default function MapComponent() {
   const { user } = useAuth();
   const [markers, setMarkers] = useState<VehicleLocation[]>([]);
+  const [hospitals, setHospitals] = useState<HospitalLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [invalidCount, setInvalidCount] = useState(0);
@@ -122,12 +147,28 @@ export default function MapComponent() {
         const token = localStorage.getItem('token');
         if (!token) throw new Error('No authentication token found');
 
-        const vehiclesReq = await fetch('/api/vehicles', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const [vehiclesReq, hospitalsReq] = await Promise.all([
+          fetch('/api/vehicles', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/hospitals', { headers: { 'Authorization': `Bearer ${token}` } }),
+        ]);
 
         if (!vehiclesReq.ok) {
           throw new Error('Failed to fetch vehicles from backend');
+        }
+
+        // Fetch hospitals (non-fatal)
+        if (hospitalsReq.ok) {
+          const hospitalData = await hospitalsReq.json();
+          const validHospitals: HospitalLocation[] = hospitalData
+            .filter((h: any) => isValidCoord(Number(h.latitude), Number(h.longitude)))
+            .map((h: any) => ({
+              id: h.id,
+              name: h.name,
+              position: [Number(h.latitude), Number(h.longitude)] as [number, number],
+              bedAvailable: h.bedAvailable,
+              ambulanceCount: h.ambulanceCount,
+            }));
+          if (isMounted) setHospitals(validHospitals);
         }
 
         const vehicles = await vehiclesReq.json();
@@ -240,6 +281,10 @@ export default function MapComponent() {
           <span style={{ display: 'inline-block', width: 14, height: 14, background: VEHICLE_CONFIG.DEFAULT.bg, borderRadius: '50%', flexShrink: 0, opacity: 0.5 }} />
           <span style={{ color: '#888', fontStyle: 'italic' }}>Offline / faded</span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+          <span style={{ display: 'inline-block', width: 14, height: 14, background: '#00897b', borderRadius: '3px', flexShrink: 0 }} />
+          <span style={{ color: '#333' }}>🏥 Hospital</span>
+        </div>
       </div>
 
       <MapContainer center={defaultPosition} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -274,6 +319,24 @@ export default function MapComponent() {
             </Marker>
           );
         })}
+
+        {hospitals.map(h => (
+          <Marker key={h.id} position={h.position} icon={createHospitalIcon()}>
+            <Popup>
+              <div style={{ minWidth: 150 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 20 }}>🏥</span>
+                  <strong style={{ color: '#00897b' }}>Hospital</strong>
+                </div>
+                <div><strong>Name:</strong> {h.name}</div>
+                <div><strong>Beds Available:</strong> {h.bedAvailable}</div>
+                <div><strong>Ambulances:</strong> {h.ambulanceCount}</div>
+                <div><strong>Lat:</strong> {h.position[0].toFixed(5)}</div>
+                <div><strong>Lng:</strong> {h.position[1].toFixed(5)}</div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );
