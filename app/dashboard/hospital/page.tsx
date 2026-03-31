@@ -41,7 +41,7 @@ export default function HospitalManagement() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const res = await fetch('http://localhost:3000/hospitals', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/hospitals', { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to fetch hospitals');
       setHospitals(await res.json());
     } catch (err: any) { setErrorMsg(err.message); }
@@ -51,7 +51,7 @@ export default function HospitalManagement() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/hospitals', {
+      const res = await fetch('/api/hospitals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ name: formName, address: formAddress, bedTotal: parseInt(formBedTotal), ambulanceCount: parseInt(formAmbulanceCount) || 0 })
@@ -67,7 +67,7 @@ export default function HospitalManagement() {
     e.preventDefault();
     if (!selectedHospital) return;
     try {
-      const res = await fetch(`http://localhost:3000/hospitals/${selectedHospital.id}/beds`, {
+      const res = await fetch(`/api/hospitals/${selectedHospital.id}/beds`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ bedAvailable: parseInt(formBedAvailable) })
@@ -82,7 +82,7 @@ export default function HospitalManagement() {
     e.preventDefault();
     if (!selectedHospital) return;
     try {
-      const res = await fetch(`http://localhost:3000/hospitals/${selectedHospital.id}/ambulances`, {
+      const res = await fetch(`/api/hospitals/${selectedHospital.id}/ambulances`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ ambulanceCount: parseInt(formAmbCount) })

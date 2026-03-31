@@ -49,7 +49,7 @@ export default function IncidentsQueue() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const endpoint = user?.role === 'DISPATCHER' ? 'http://localhost:3000/incidents/open' : 'http://localhost:3000/incidents';
+      const endpoint = user?.role === 'DISPATCHER' ? '/api/incidents/open' : '/api/incidents';
       const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to fetch incidents');
       setIncidents(await res.json());
@@ -60,7 +60,7 @@ export default function IncidentsQueue() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/incidents', {
+      const res = await fetch('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ title: formTitle, type: formType, citizenName: formCitizenName, latitude: parseFloat(formLat), longitude: parseFloat(formLon), notes: formNotes })
@@ -76,7 +76,7 @@ export default function IncidentsQueue() {
     e.preventDefault();
     if (!selectedIncident) return;
     try {
-      const res = await fetch(`http://localhost:3000/incidents/${selectedIncident.id}/status`, {
+      const res = await fetch(`/api/incidents/${selectedIncident.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status: formStatus })
@@ -91,7 +91,7 @@ export default function IncidentsQueue() {
     e.preventDefault();
     if (!selectedIncident) return;
     try {
-      const res = await fetch(`http://localhost:3000/incidents/${selectedIncident.id}/assign`, {
+      const res = await fetch(`/api/incidents/${selectedIncident.id}/assign`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ assignedUnitId: formUnitId })

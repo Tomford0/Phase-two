@@ -18,9 +18,9 @@ export default function AnalyticsPage() {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [rtRes, rgRes, utRes] = await Promise.all([
-          fetch('http://localhost:3000/analytics/response-times', { headers }),
-          fetch('http://localhost:3000/analytics/incidents-by-region', { headers }),
-          fetch('http://localhost:3000/analytics/resource-utilization', { headers }),
+          fetch('/api/analytics/response-times', { headers }),
+          fetch('/api/analytics/incidents-by-region', { headers }),
+          fetch('/api/analytics/resource-utilization', { headers }),
         ]);
 
         if (rtRes.ok) setResponseTimes(await rtRes.json());

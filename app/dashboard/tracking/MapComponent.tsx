@@ -67,7 +67,7 @@ export default function MapComponent() {
         if (!token) throw new Error('No authentication token found');
 
         // 1. Fetch all registered vehicles from Dispatch Service
-        const vehiclesReq = await fetch('http://localhost:3000/vehicles', {
+        const vehiclesReq = await fetch('/api/vehicles', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -81,7 +81,7 @@ export default function MapComponent() {
         // 2. Fetch specific GPS locations for each vehicle
         for (const vehicle of vehicles) {
           try {
-            const locReq = await fetch(`http://localhost:3000/tracking/vehicles/${vehicle.id}/location`, {
+            const locReq = await fetch(`/api/tracking/vehicles/${vehicle.id}/location`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
 

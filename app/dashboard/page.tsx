@@ -22,7 +22,7 @@ export default function DashboardOverview() {
         let unitsCount = 0;
 
         if (['ADMIN', 'DISPATCHER'].includes(user.role)) {
-           const res = await fetch('http://localhost:3000/incidents/open', { headers });
+           const res = await fetch('/api/incidents/open', { headers });
            if (res.ok) {
               const data = await res.json();
               incidentsCount = Array.isArray(data) ? data.length : 0;
@@ -30,7 +30,7 @@ export default function DashboardOverview() {
         }
 
         if (['ADMIN', 'HOSPITAL'].includes(user.role)) {
-           const res = await fetch('http://localhost:3000/hospitals', { headers });
+           const res = await fetch('/api/hospitals', { headers });
            if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data)) {
@@ -40,7 +40,7 @@ export default function DashboardOverview() {
         }
 
         if (['ADMIN', 'AMBULANCE'].includes(user.role)) {
-           const res = await fetch('http://localhost:3000/vehicles', { headers });
+           const res = await fetch('/api/vehicles', { headers });
            if (res.ok) {
               const data = await res.json();
               unitsCount = Array.isArray(data) ? data.length : 0;

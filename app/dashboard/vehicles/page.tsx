@@ -37,7 +37,7 @@ export default function VehiclesPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const res = await fetch('http://localhost:3000/vehicles', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/vehicles', { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to fetch vehicles');
       setVehicles(await res.json());
     } catch (err: any) { setErrorMsg(err.message); }
@@ -47,7 +47,7 @@ export default function VehiclesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/vehicles', {
+      const res = await fetch('/api/vehicles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ plateNumber: formPlate, type: formType })
@@ -63,7 +63,7 @@ export default function VehiclesPage() {
     e.preventDefault();
     if (!selectedVehicle) return;
     try {
-      const res = await fetch(`http://localhost:3000/vehicles/${selectedVehicle.id}/status`, {
+      const res = await fetch(`/api/vehicles/${selectedVehicle.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status: formStatus })
